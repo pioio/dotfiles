@@ -1,0 +1,278 @@
+#!/bin/bash
+###############################################################################
+# This is my bashrc file. 
+# It's meant to be sourced from the end of the actual ~/.bashrc file.
+###############################################################################
+# Features
+#
+# - Display git branch, and python virtual environment name.
+# - Two line bash prompt
+#   - First line contains all the information you need, and only when you need it (hidden by default)
+#   - Second line contains the prompt.
+# - Highlight the username when logged in as root.
+# - Show the wallclock time of the last command.
+# - Show the exit code of the last command.
+# - Comes with a SSH alias which ships automatically loads and sources the .bashrc after
+#   logging in to a remote host. So, the .bashrc is always there to be used, and
+#   does not interefer with other users accessing the remote systems.
+###############################################################################
+
+###############################################################################
+# Other references I found helpful when creating this file
+###############################################################################
+# https://jonisalonen.com/2012/your-bash-prompt-needs-this/
+# Consider 'xpanes'
+# https://mhoffman.github.io/2015/05/21/how-to-navigate-directories-with-the-shell.html
+
+
+
+
+###############################################################################
+# Configuration
+###############################################################################
+
+export EDITOR=vim
+
+# Space separated list of "special" hostnames
+# If you're logged in to a matching host, the hostname on the bash prompt will be 
+# printed in a special color.
+# Useful for easily distinguishing between production vs. dev hosts.
+# Feel free to set this one in your .bashrc, so that 
+# you don't have to modify this file.
+if [ -z "$CFG_SPECIAL_HOSTS" ]; then
+  CFG_SPECIAL_HOSTS="foo bar baz"
+fi
+
+CFG_PRINT_EXIT_CODE="true"
+# unset CFG_PRINT_EXIT_CODE  # Uncomment to disable
+
+CFG_PRINT_GIT_REPO_INFO="true"
+#unset CFG_PRINT_GIT_REPO_INFO
+
+CFG_PRINT_PYTHON_VIRT_ENV_INFO="true"
+#unset CFG_PRINT_PYTHON_VIRT_ENV_INFO
+
+
+
+#------------------------------------------------------------------------------
+# Aliases, all the usual suspects
+#------------------------------------------------------------------------------
+alias ..="cd .."
+alias cd..="cd .."
+alias ..="cd .."
+alias ...="cd ../../../"
+alias ....="cd ../../../../"
+alias grep='grep --color=auto'
+
+LS_TIME_FORMAT="--time-style='+%Y-%m-%d %H:%M:%S'"
+
+# List in long format
+alias ll="ls -lha ${LS_TIME_FORMAT}" 
+
+#List including hidden files with indicator and color
+alias ls='ls -aF --color=always'
+
+alias lsl="ls -lhFA --color | less -r"
+alias lsd='ls -l | grep ^d'
+
+alias gca="git commit -a -m"
+
+alias speedtest="wget -O /dev/null http://speedtest.ams01.softlayer.com/downloads/test500.zip"
+
+#------------------------------------------------------------------------------
+# Builds the Bash prompt
+#------------------------------------------------------------------------------
+
+set_bash_prompt() {
+  # Store exit code of the last command
+  EXIT_CODE=$?
+
+  # Store the runtime of the last command
+  timer_stop
+  TIMER="${timer_show}"
+  TIMER_LEN=${#TIMER}
+
+  # Prepare colors for rendering the prompt
+  # (Enclosing color codes and other invisible characters
+  # in \[ ... \] helps bash calculate the location of the prompt.
+  DARK='\[\033[38;5;240m\]'
+  CYAN='\[\033[96m\]'
+  RED='\[\033[0;31m\]'
+  WHITE='\[\033[1;37m\]'
+  GREEN='\[\033[32m\]'
+  COLOR=$WHITE
+  COLOR="$DARK"
+  COLOR2=""
+  NC='\[\033[0m\]' # NC - No Color
+
+  # Parse exit code of last run command.
+  # If exit code is 0, don't print anything,
+  # otherwise, print the exit code in red.
+  if ((${EXIT_CODE} == 0)) || [ -z "$CFG_PRINT_EXIT_CODE" ]; then
+  #if ((${EXIT_CODE} == 0)); then
+      EXIT_CODE=""
+  else
+      EXIT_CODE="${RED}${EXIT_CODE}${COLOR} "
+  fi
+  bold=$(tput bold)
+  normal=$(tput sgr0)
+
+  # Parse username. Make it stand out if it's the root user
+  WHOAMI=$(whoami)
+  if [[ $WHOAMI == "root" ]]; then
+      WHOAMI=${bold}${CYAN}${WHOAMI}${COLOR}${normal}
+    else
+      WHOAMI=${WHITE}${WHOAMI}${COLOR}
+  fi
+
+  # Parse any virtual environments
+  if [ ! -z "$CFG_PRINT_PYTHON_VIRT_ENV_INFO" ] && [[ $VIRTUAL_ENV ]]; then
+    PYTHON_VIRT_ENV="($(basename ${VIRTUAL_ENV}))"
+  else
+    PYTHON_VIRT_ENV=""
+  fi
+
+  # Parse any git repos
+  GIT_BRANCH=""
+  if [ ! -z "$CFG_PRINT_GIT_REPO_INFO" ]; then
+    GIT_BRANCH=$(git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+    if [[ $GIT_BRANCH ]]; then
+      GIT_BRANCH="${GREEN}${GIT_BRANCH}${COLOR} "
+    fi
+  fi
+
+
+  P_HOST=${COLOR2}$(hostname)${NC}
+  if (echo "$CFG_SPECIAL_HOSTS"  | fgrep -q "$(hostname)"); then
+    P_HOST=${GREEN}${P_HOST}${NC}
+  fi
+
+  # Communicate the username/hostname to the remote tmux session
+  set_tmux_pane_title $(whoami)"@"$(hostname)":"$(pwd)
+
+  # Top-left part of the bash prompt
+  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}\w${COLOR} ${EXIT_CODE}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+
+  # Top-right part of the bash prompt
+  LINE1_RIGHT="${timer_show} $(date '+(%Y-%m-%d) %H:%M:%S')"
+
+  # Combine the Top-left and Top-Right parts into one line spanning the entire terminal..
+  # This justifies the "right" part of the prompt to the right side by first writing it,
+  # and then doing carriage return and writing the left part..
+  # If the terminal is not wide enough to display both the right, and the left side,
+  # the left side will overwrite the right side.
+  # That's because I chose to consider the text/info on the right side as optional.
+  # (source: https://superuser.com/questions/187455/right-align-part-of-prompt)
+  LINE1=$(printf "${COLOR}%*s\r%s" "$(tput cols)" "${LINE1_RIGHT}" "${LINE1_LEFT}")
+
+  LINE2="${COLOR}└─$ ${NC}"
+
+  # Finally, render a two-line prompt
+  PS1="${LINE1}
+${LINE2}"
+  
+}
+
+
+
+
+PROMPT_COMMAND=set_bash_prompt
+
+unset color_prompt force_color_prompt
+
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+  test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+  alias ls='ls --color=auto' 
+  alias grep='grep --color=auto'
+  alias fgrep='fgrep --color=auto'
+  alias egrep='egrep --color=auto'
+fi
+
+# colored GCC warnings and errors
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+
+#------------------------------------------------------------------------------
+# Colored man pages - makes them easier to read.
+# Source: https://stackoverflow.com/questions/4929839/colored-manpages-with-tcsh
+#------------------------------------------------------------------------------
+export LESS_TERMCAP_mb=$'\E[01;31m'
+export LESS_TERMCAP_md=$'\E[01;31m'
+export LESS_TERMCAP_me=$'\E[0m'
+export LESS_TERMCAP_se=$'\E[0m'
+export LESS_TERMCAP_so=$'\E[01;44;33m'
+export LESS_TERMCAP_ue=$'\E[0m'
+export LESS_TERMCAP_us=$'\E[01;32m'
+
+
+#------------------------------------------------------------------------------
+# Set the title of the "pane" in the enclosing tmux sessions.
+# It uses escape characters to communicate this string to tmux.
+# This obviously works across ssh connections:
+#    hostA -> hostB -> hostC
+#    Where:
+#      hostA - is running tmux
+#      hostC - is running this code
+#------------------------------------------------------------------------------
+set_tmux_pane_title() {
+  printf "\033]2;$1\033\\"
+
+  # Alternatively, you can use the follow to set the title 
+  # of the tmux instead of the title of the pane.
+  # printf "\033k$1\033\\"
+}
+
+#------------------------------------------------------------------------------
+# Other function
+#------------------------------------------------------------------------------
+
+
+# shorthand for awk
+function col {
+  awk -v col=$1 '{print $col}'
+}
+
+
+
+#------------------------------------------------------------------------------
+# Functions related to measuring 
+# execution time of the last command
+# Source: https://stackoverflow.com/questions/1862510/how-can-the-last-commands-wall-time-be-put-in-the-bash-prompt/1862762
+#------------------------------------------------------------------------------
+
+timer_start=""
+
+function timer_now {
+  date +%s%N
+}
+
+function timer_start {
+  timer_start=${timer_start:-$(timer_now)}
+}
+
+function timer_stop {
+  local delta_us=$((($(timer_now) - $timer_start) / 1000))
+  local us=$((delta_us % 1000))
+  local ms=$(((delta_us / 1000) % 1000))
+  local s=$(((delta_us / 1000000) % 60))
+  local m=$(((delta_us / 60000000) % 60))
+  local h=$((delta_us / 3600000000))
+  # Goal: always show around 3 digits of accuracy
+  if ((h > 0)); then timer_show=${h}h${m}m
+  elif ((m > 0)); then timer_show=${m}m${s}s
+  elif ((s >= 10)); then timer_show=${s}.$((ms / 100))s
+  elif ((s > 0)); then timer_show=${s}.$(printf %03d $ms)s
+  elif ((ms >= 100)); then timer_show=${ms}ms
+  elif ((ms > 0)); then timer_show=${ms}.$((us / 100))ms
+  else timer_show=${us}us
+  fi
+  unset timer_start
+}
+
+trap 'timer_start' DEBUG
+
+#------------------------------------------------------------------------------
+# End of the file - thanks for reading all the way here.
+#------------------------------------------------------------------------------
