@@ -1,0 +1,11 @@
+version: 3
+tasks:
+  default: task -l
+
+  install:
+    desc: "Install dotfiles for the current user"
+    sources:
+      - .rangerrc
+    cmds:
+      - cp .rangerrc ~/.config/ranger/rc.conf
+      - cp my_ranger_plugin.py ~/.config/ranger/
