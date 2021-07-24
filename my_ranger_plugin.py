@@ -1,3 +1,8 @@
+# Original source: https://gist.github.com/AffanIndo/af35873adb65a689f370a7cd988d12fc
+
+# To install, copy this file to ~/.config/ranger/plugins
+
+
 # You always need to import ranger.api.commands here to get the Command class:
 from ranger.api.commands import *
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 ###############################################################################
-# This is my bashrc file. 
-# It's meant to be sourced from the end of the actual ~/.bashrc file.
+# This is my bashrc file.
+# This file is **NOT** a replacement for the distro's .bashrc file.
+# This file is meant to be sourced from the end of the actual ~/.bashrc file.
 ###############################################################################
 # Features
 #
@@ -229,12 +230,21 @@ set_tmux_pane_title() {
 #------------------------------------------------------------------------------
 
 
-# shorthand for awk
+# Shorthand for awk
 function col {
   awk -v col=$1 '{print $col}'
 }
 
 
+# Pushover notifications
+# This can be used like from the shell:   rsync some_src some_dst; pingme "rsync is done"
+#pingme() {
+#    APP_TOKEN='<YOUR_PUSHOVER_APP_TOKEN>'
+#    USER_TOKEN='<YOUR_PUSHOVER_USER_TOKEN>'
+#    TITLE="$1"
+#    MESSAGE="$2"
+#    curl 'https://api.pushover.net/1/messages.json' -X POST -d "token=$APP_TOKEN&user=$USER_TOKEN&title=\"$TITLE\"" --data-urlencode "message=\"$MESSAGE\""
+#}
 
 #------------------------------------------------------------------------------
 # Functions related to measuring 
