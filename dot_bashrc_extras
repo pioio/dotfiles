@@ -58,7 +58,7 @@ CFG_PRINT_PYTHON_VIRT_ENV_INFO="true"
 #------------------------------------------------------------------------------
 # Aliases, all the usual suspects
 #------------------------------------------------------------------------------
-alias ..="cd .."
+alias ..="cd .. && ls"
 alias cd..="cd .."
 alias ..="cd .."
 alias ...="cd ../../../"
@@ -68,21 +68,39 @@ alias grep='grep --color=auto'
 LS_TIME_FORMAT="--time-style='+%Y-%m-%d %H:%M:%S'"
 
 # List in long format
-alias ll="ls -lha ${LS_TIME_FORMAT}" 
+alias ll="ls -lha ${LS_TIME_FORMAT} --group-directories-first" 
 
 #List including hidden files with indicator and color
-alias ls='ls -aF --color=always'
 
-alias lsl="ls -lhFA --color | less -r"
-alias lsd='ls -l | grep ^d'
+alias lsl="ls -lhFA --color --group-directories-first | less -r"
+alias lsd='ls -l --group-directories-first | grep ^d'
 
 alias gca="git commit -a -m"
 
 alias speedtest="wget -O /dev/null http://speedtest.ams01.softlayer.com/downloads/test500.zip"
 
+#alias cdd=""
+#alias cdd='cd "$@" && ls --group-directories-first'
+#alias cdd="cd "$@" && ls "
+
+alias s="git s"
+alias sss="git ss"
+
+#alias ls='ls -aF --color=always --group-directories-first'
 #------------------------------------------------------------------------------
 # Builds the Bash prompt
 #------------------------------------------------------------------------------
+
+set_bash_prompt2() {
+ export PS1="XXXX"
+}
+
+
+# various constants
+# (obtaining them in PS1 is too slow)
+__bold=$(tput bold)
+__normal=$(tput sgr0)
+
 
 set_bash_prompt() {
   # Store exit code of the last command
@@ -110,52 +128,87 @@ set_bash_prompt() {
   # If exit code is 0, don't print anything,
   # otherwise, print the exit code in red.
   if ((${EXIT_CODE} == 0)) || [ -z "$CFG_PRINT_EXIT_CODE" ]; then
-  #if ((${EXIT_CODE} == 0)); then
-      EXIT_CODE=""
+      EXIT_CODE_TEXT=""
   else
-      EXIT_CODE="${RED}${EXIT_CODE}${COLOR} "
+      EXIT_CODE_TEXT="${RED}${EXIT_CODE}${COLOR} "
   fi
-  bold=$(tput bold)
-  normal=$(tput sgr0)
 
-  # Parse username. Make it stand out if it's the root user
-  WHOAMI=$(whoami)
+
+    # Parse username. Make it stand out if it's the root user
+  
+  WHOAMI=$USER
   if [[ $WHOAMI == "root" ]]; then
-      WHOAMI=${bold}${CYAN}${WHOAMI}${COLOR}${normal}
+      WHOAMI=${__normal}${RED}${WHOAMI}${COLOR}${__normal}
     else
       WHOAMI=${WHITE}${WHOAMI}${COLOR}
   fi
 
   # Parse any virtual environments
-  if [ ! -z "$CFG_PRINT_PYTHON_VIRT_ENV_INFO" ] && [[ $VIRTUAL_ENV ]]; then
-    PYTHON_VIRT_ENV="($(basename ${VIRTUAL_ENV}))"
-  else
-    PYTHON_VIRT_ENV=""
-  fi
+#  if [ ! -z "$CFG_PRINT_PYTHON_VIRT_ENV_INFO" ] && [[ $VIRTUAL_ENV ]]; then
+#    PYTHON_VIRT_ENV="($(basename ${VIRTUAL_ENV}))"
+#  else
+#    PYTHON_VIRT_ENV=""
+#  fi
 
   # Parse any git repos
   GIT_BRANCH=""
   if [ ! -z "$CFG_PRINT_GIT_REPO_INFO" ]; then
-    GIT_BRANCH=$(git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
-    if [[ $GIT_BRANCH ]]; then
-      GIT_BRANCH="${GREEN}${GIT_BRANCH}${COLOR} "
-    fi
+      # on ubuntu this is installed by the git packate
+      GIT_BRANCH=$(git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+      NEW_FILES=$(echo "$GIT_STATUS" | grep '??' | wc -l)
+      if [[ $GIT_BRANCH ]]; then
+        GIT_STATUS=$(git status --porcelain)
+        UNTRACKED_FILES=$(echo "$GIT_STATUS" | grep '^??' | wc -l)
+        TOUCHED_FILES=$(echo "$GIT_STATUS" | grep '^.A\|^.M\|^.R\|^.D' | wc -l)
+        STAGED_FILES=$(echo "$GIT_STATUS" | grep '^A\|^M\|^R\|^D' | wc -l)
+
+	MODIFIED=""
+	if [[ $UNTRACKED_FILES != 0 || $TOUCHED_FILES != 0 || $STAGED_FILES != 0 ]]; then
+
+	if [[ $UNTRACKED_FILES == 0 ]]; then
+		UNTRACKED_FILES="0"
+	else
+		UNTRACKED_FILES="${RED}${UNTRACKED_FILES}${DARK}"
+	fi
+	if [[ $TOUCHED_FILES == 0 ]]; then
+		TOUCHED_FILES="0"
+	else
+		TOUCHED_FILES="${RED}${TOUCHED_FILES}${DARK}"
+	fi
+	if [[ $STAGED_FILES == 0 ]]; then
+		STAGED_FILES="0"
+	else
+		STAGED_FILES="${GREEN}${STAGED_FILES}${DARK}"
+	fi
+	MODIFIED="${DARK}($UNTRACKED_FILES/$TOUCHED_FILES/$STAGED_FILES)${NC}"
+	else
+
+		MODIFIED="${DARK}(clean)${NC}"
+        fi
+
+        GIT_BRANCH="${GREEN}[${GIT_BRANCH}]${NC} $MODIFIED"
+	       
+      fi
+#    fi
   fi
 
 
-  P_HOST=${COLOR2}$(hostname)${NC}
-  if (echo "$CFG_SPECIAL_HOSTS"  | fgrep -q "$(hostname)"); then
-    P_HOST=${GREEN}${P_HOST}${NC}
-  fi
+  # Can be slow
+  P_HOST=${COLOR2}$HOSTNAME${NC}
+  # if (echo "$CFG_SPECIAL_HOSTS"  | fgrep -q "$(hostname)"); then
+  #   P_HOST=${GREEN}${P_HOST}${NC}
+  # fi
 
   # Communicate the username/hostname to the remote tmux session
-  set_tmux_pane_title $(whoami)"@"$(hostname)":"$(pwd)
+  #  set_tmux_pane_title $(whoami)"@"$(hostname)":"$(pwd)
 
   # Top-left part of the bash prompt
-  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}\w${COLOR} ${EXIT_CODE}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+#  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}\w${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}$(pwd)${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
 
   # Top-right part of the bash prompt
-  LINE1_RIGHT="${timer_show} $(date '+(%Y-%m-%d) %H:%M:%S')"
+   LINE1_RIGHT="${timer_show} $(date '+(%Y-%m-%d) %H:%M:%S')"
+  #LINE1_RIGHT="Top right ${timer_show}"
 
   # Combine the Top-left and Top-Right parts into one line spanning the entire terminal..
   # This justifies the "right" part of the prompt to the right side by first writing it,
@@ -164,12 +217,22 @@ set_bash_prompt() {
   # the left side will overwrite the right side.
   # That's because I chose to consider the text/info on the right side as optional.
   # (source: https://superuser.com/questions/187455/right-align-part-of-prompt)
-  LINE1=$(printf "${COLOR}%*s\r%s" "$(tput cols)" "${LINE1_RIGHT}" "${LINE1_LEFT}")
+
+  # Draw a horizontal line separating previous command from current one
+  if [[ $EXIT_CODE == "0" ]]; then
+    LINE0="${DARK}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+  else
+    LINE0="${RED}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+  fi
+
+  LINE1=$(printf "${COLOR}%*s\r%s"  $COLUMNS "${LINE1_RIGHT}" "${LINE1_LEFT}")
+  #LINE1=$(printf "${COLOR}%*s\r%s" "$(tput cols)" "${LINE1_RIGHT}" "${LINE1_LEFT}")
 
   LINE2="${COLOR}└─$ ${NC}"
 
   # Finally, render a two-line prompt
-  PS1="${LINE1}
+  PS1="${LINE0}
+${LINE1}
 ${LINE2}"
   
 }
@@ -284,5 +347,5 @@ function timer_stop {
 trap 'timer_start' DEBUG
 
 #------------------------------------------------------------------------------
-# End of the file - thanks for reading all the way here.
+# End of the file.
 #------------------------------------------------------------------------------
