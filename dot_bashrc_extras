@@ -64,6 +64,7 @@ alias ...="cd ../../../"
 alias ....="cd ../../../../"
 alias .....="cd ../../../../../"
 alias ......="cd ../../../../../"
+alias cdg=' cd "$(git rev-parse --show-toplevel)"' # git root
 
 # Common tools
 alias G=grep
@@ -112,11 +113,18 @@ alias s="git status -sb"
 alias gs="git status -sb"
 alias gss="git status"
 
+alias gl="git log --pretty='format:%C(magenta)%h%Creset - %C(red)%d%Creset %s %C(dim green)(%cr) [%an] %C(white)%ad%Creset' --abbrev-commit -30"
+alias gll="git log" # long
+
 alias ga='git add'
 alias gaa='git add -A'
 
 alias gc="git commit"
+alias gcp="git commit && git push"
 alias gca="git commit -a"
+alias gcap="git commit -a && git push"
+
+alias gfetch="git fetch"
 
 alias d="git diff"
 alias gd="git diff"
@@ -124,7 +132,7 @@ alias gdw="git diff --word-diff"
 alias gds="git diff --cache" # compare HEAD with staging area
 alias gdh="git diff HEAD" # compare HEAD with working copy
 
-alias gtree="tree = log --pretty=better-oneline --all --graph"
+alias gtree="git log --pretty=better-oneline --all --graph"
 alias gp='git pull'
 alias gpull='git pull'
 alias gpush='git push'
@@ -134,8 +142,24 @@ alias gds="git diff --staged"
 # Push the current branch to the remote "origin", and set it to track the upstream branch
 alias gpub="git publish" 
 
+
 # Show all locally checkout out repo directories
-alias repos='for d in */; do cd $d; echo "--- $(pwd) -----------"; pwd; git status -s; cd ..; done'
+alias print_repos='for d in */; do cd "$d"; echo "--- $(pwd) -----------"; git status -s; cd ..; done'
+
+
+repos() {
+  if git rev-parse --is-inside-work-tree > /dev/null; then
+    #go to one folder above the git root,
+    #assume there's more repos checked out in there,
+    #print all of their status
+    _CURRENT=$(pwd)
+    cdg && cd .. && print_repos
+    cd $_CURRENT
+  else
+    print_repos
+  fi
+}
+
 
 ###############################################################################
 # Docker
