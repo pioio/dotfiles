@@ -24,13 +24,12 @@
 # https://jonisalonen.com/2012/your-bash-prompt-needs-this/
 # Consider 'xpanes'
 # https://mhoffman.github.io/2015/05/21/how-to-navigate-directories-with-the-shell.html
-
-
+# https://github.com/lvancrayelynghe/dotfiles/blob/master/others/sshrc
 
 
 ###############################################################################
 # Configuration
-###############################################################################
+
 
 export EDITOR=vim
 
@@ -54,48 +53,164 @@ CFG_PRINT_PYTHON_VIRT_ENV_INFO="true"
 #unset CFG_PRINT_PYTHON_VIRT_ENV_INFO
 
 
+###############################################################################
+# Core aliases
 
-#------------------------------------------------------------------------------
-# Aliases, all the usual suspects
-#------------------------------------------------------------------------------
+# Navigation
 alias ..="cd .. && ls"
 alias cd..="cd .."
 alias ..="cd .."
 alias ...="cd ../../../"
 alias ....="cd ../../../../"
+alias .....="cd ../../../../../"
+alias ......="cd ../../../../../"
+
+# Common tools
+alias G=grep
+alias H=head
+alias S=sort
 alias grep='grep --color=auto'
+
 
 LS_TIME_FORMAT="--time-style='+%Y-%m-%d %H:%M:%S'"
 
-# List in long format
-alias ll="ls -lha ${LS_TIME_FORMAT} --group-directories-first" 
-
-#List including hidden files with indicator and color
-
-alias lsl="ls -lhFA --color --group-directories-first | less -r"
-alias lsd='ls -l --group-directories-first | grep ^d'
-
-
 alias speedtest="wget -O /dev/null http://speedtest.ams01.softlayer.com/downloads/test500.zip"
 
-#alias cdd=""
-#alias cdd='cd "$@" && ls --group-directories-first'
-#alias cdd="cd "$@" && ls "
+# Search & find
+alias sg='grep -rinw "." -e ' ## inside files
+alias sa='ack -Hir' ## with ack
+alias ss='sift -n' ## with sift
+alias ff='find . -type f -iname ' ## insensitive filename
 
-# extra git aliases
-alias gca="git commit -a -m"
-alias s="git s"
-alias gss="git ss"
-alias d="git diff"
-alias gds="git diff --staged"
+# Listing
+if [[ "$OSTYPE" == "darwin"* || -f "/usr/bin/exa" ]]; then
+    # MacOS  (gls -> brew-installed gnu coreutils)
+    #         exa installed with brew
+    alias ls='gls -F --color=always --group-directories-first'
+    alias ll=" exa -h --long --git -a --group-directories-first --classify --time-style long-iso"
+    alias lst="exa -h --long --git -a --group-directories-first --classify --tree --level 2 --time-style long-iso "
+    alias lsd='exa -h --long --git -a --only-dirs' # only dirs
+    alias q='ll'
+else
+    # No exa installed
+    alias ls='ls -F --color=always --group-directories-first'
+    alias ll="ls -lha ${LS_TIME_FORMAT} --group-directories-first" 
+    alias lsd='ls -la --group-directories-first | grep ^d'
+    alias lst="echo command not available"
+    alias q='ll'
+fi
 
+# Other
 alias j="just" # Justfile automation
 alias t="task" # Taskfile automation
 
-#alias ls='ls -aF --color=always --group-directories-first'
-#------------------------------------------------------------------------------
+###############################################################################
+# Git
+alias g="git"
+
+alias s="git status -sb"
+alias gs="git status -sb"
+alias gss="git status"
+
+alias ga='git add'
+alias gaa='git add -A'
+
+alias gc="git commit"
+alias gca="git commit -a"
+
+alias d="git diff"
+alias gd="git diff"
+alias gdw="git diff --word-diff"
+alias gds="git diff --cache" # compare HEAD with staging area
+alias gdh="git diff HEAD" # compare HEAD with working copy
+
+alias gtree="tree = log --pretty=better-oneline --all --graph"
+alias gp='git pull'
+alias gpull='git pull'
+alias gpush='git push'
+
+alias gds="git diff --staged"
+
+# Push the current branch to the remote "origin", and set it to track the upstream branch
+alias gpub="git publish" 
+
+# Show all locally checkout out repo directories
+alias repos='for d in */; do cd $d; echo "--- $(pwd) -----------"; pwd; git status -s; cd ..; done'
+
+###############################################################################
+# Docker
+alias doi="docker images"
+alias dov="docker volume"
+alias doe="docker exec"
+alias dok="docker kill"
+alias dops="docker ps"
+alias dorm="docker rm"
+alias dormi="docker rmi"
+
+# Docker Compose
+alias dc="docker-compose"
+alias dcb="docker-compose build"
+alias dcup="docker-compose up"
+alias dcrm="docker-compose rm"
+alias dcr="docker-compose run"
+alias dcsa="docker-compose start"
+alias dcso="docker-compose stop"
+alias dsss="docker-sync-stack start"
+alias dssc="docker-sync-stack clean"
+
+
+###############################################################################
+# Other functions
+
+# Notes tool
+notes() {
+    case $@ in
+        "-s") subl ~/.notes.md;;
+        "-e") vim  ~/.notes.md;;
+          "") cat  ~/.notes.md | less;;
+           *) echo -e "`date +%Y-%m-%d-%H-%M-%S` (user: `who am i | awk '{print $1}'`) $@\n" >> ~/.notes.md
+              echo -e "\033[0;37m\"$@\" \033[1;30madded to your notes.\033[0m\n";;
+    esac
+}
+
+# Convert relative path to absolute
+abspath() {
+    local target="$1"
+
+    if [ "$target" == "." ]; then
+        echo "$(pwd)"
+    elif [ "$target" == ".." ]; then
+        echo "$(dirname "$(pwd)")"
+    else
+        echo "$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+    fi
+}
+
+# Created a timestamped backup of a file
+backup-file() {
+    cp $1 $1.bak-`date +%Y-%m-%d-%H-%M-%S`
+}
+
+# Shorthand for awk
+function col {
+  awk -v col=$1 '{print $col}'
+}
+
+
+# Pushover notifications
+# This can be used like from the shell:   rsync some_src some_dst; pingme "rsync is done"
+#pingme() {
+#    APP_TOKEN='<YOUR_PUSHOVER_APP_TOKEN>'
+#    USER_TOKEN='<YOUR_PUSHOVER_USER_TOKEN>'
+#    TITLE="$1"
+#    MESSAGE="$2"
+#    curl 'https://api.pushover.net/1/messages.json' -X POST -d "token=$APP_TOKEN&user=$USER_TOKEN&title=\"$TITLE\"" --data-urlencode "message=\"$MESSAGE\""
+#}
+
+
+
+###############################################################################
 # Builds the Bash prompt
-#------------------------------------------------------------------------------
 
 set_bash_prompt2() {
  export PS1="XXXX"
@@ -130,17 +245,23 @@ set_bash_prompt() {
   COLOR2=""
   NC='\[\033[0m\]' # NC - No Color
 
+
   # Parse exit code of last run command.
   # If exit code is 0, don't print anything,
   # otherwise, print the exit code in red.
   if ((${EXIT_CODE} == 0)) || [ -z "$CFG_PRINT_EXIT_CODE" ]; then
       EXIT_CODE_TEXT=""
   else
-      EXIT_CODE_TEXT="${RED}${EXIT_CODE}${NC} "
+      if ((${EXIT_CODE} == 130)); then
+        # Exit code 130 is, likely, ctrl+c. Ignore it.
+        EXIT_CODE_TEXT="${EXIT_CODE} "
+      else
+        EXIT_CODE_TEXT="${RED}${EXIT_CODE}${NC} "
+      fi
   fi
 
 
-    # Parse username. Make it stand out if it's the root user
+  # Parse username. Make it stand out if it's the root user
   
   WHOAMI=$USER
   if [[ $WHOAMI == "root" ]]; then
@@ -150,60 +271,59 @@ set_bash_prompt() {
   fi
 
   # Parse any virtual environments
-#  if [ ! -z "$CFG_PRINT_PYTHON_VIRT_ENV_INFO" ] && [[ $VIRTUAL_ENV ]]; then
-#    PYTHON_VIRT_ENV="($(basename ${VIRTUAL_ENV}))"
-#  else
-#    PYTHON_VIRT_ENV=""
-#  fi
+  if [ ! -z "$CFG_PRINT_PYTHON_VIRT_ENV_INFO" ] && [[ $VIRTUAL_ENV ]]; then
+    PYTHON_VIRT_ENV="($(basename ${VIRTUAL_ENV}))"
+  else
+    PYTHON_VIRT_ENV=""
+  fi
 
-  # Parse any git repos
+  # Check if we're in a git rep, and if so, include additional information
   GIT_BRANCH=""
   if [ ! -z "$CFG_PRINT_GIT_REPO_INFO" ]; then
       # on ubuntu this is installed by the git packate
       GIT_BRANCH=$(git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
       NEW_FILES=$(echo "$GIT_STATUS" | grep '??' | wc -l)
       if [[ $GIT_BRANCH ]]; then
+
+        # Run simple git status and parse count the number of files in each category
         GIT_STATUS=$(git status --porcelain)
         UNTRACKED_FILES=$(echo "$GIT_STATUS" | grep '^??' | wc -l)
         TOUCHED_FILES=$(echo "$GIT_STATUS" | grep '^.A\|^.M\|^.R\|^.D' | wc -l)
         STAGED_FILES=$(echo "$GIT_STATUS" | grep '^A\|^M\|^R\|^D' | wc -l)
 
-	MODIFIED=""
-	if [[ $UNTRACKED_FILES != 0 || $TOUCHED_FILES != 0 || $STAGED_FILES != 0 ]]; then
+        MODIFIED=""
 
-	if [[ $UNTRACKED_FILES == 0 ]]; then
-		UNTRACKED_FILES="0"
-	else
-		UNTRACKED_FILES="${RED}${UNTRACKED_FILES}${DARK}"
-	fi
-	if [[ $TOUCHED_FILES == 0 ]]; then
-		TOUCHED_FILES="0"
-	else
-		TOUCHED_FILES="${RED}${TOUCHED_FILES}${DARK}"
-	fi
-	if [[ $STAGED_FILES == 0 ]]; then
-		STAGED_FILES="0"
-	else
-		STAGED_FILES="${GREEN}${STAGED_FILES}${DARK}"
-	fi
-	MODIFIED="${DARK}($UNTRACKED_FILES/$TOUCHED_FILES/$STAGED_FILES)${NC}"
-	else
-
-		MODIFIED="${DARK}(clean)${NC}"
+        # If at the git repo is not clean, display what's modified
+        if [[ $UNTRACKED_FILES != 0 || $TOUCHED_FILES != 0 || $STAGED_FILES != 0 ]]; then
+            if [[ $UNTRACKED_FILES == 0 ]]; then
+                UNTRACKED_FILES="0"
+            else
+                UNTRACKED_FILES="${RED}${UNTRACKED_FILES}${DARK}"
+            fi
+            if [[ $TOUCHED_FILES == 0 ]]; then
+                TOUCHED_FILES="0"
+            else
+                TOUCHED_FILES="${RED}${TOUCHED_FILES}${DARK}"
+            fi
+            if [[ $STAGED_FILES == 0 ]]; then
+                STAGED_FILES="0"
+            else
+                STAGED_FILES="${GREEN}${STAGED_FILES}${DARK}"
+            fi
+            MODIFIED="${DARK}($UNTRACKED_FILES/$TOUCHED_FILES/$STAGED_FILES)${NC}"
+        else
+            MODIFIED="${DARK}(clean)${NC}"
         fi
 
         GIT_BRANCH="${NC}${__normal}${GREEN}[${GIT_BRANCH}]${NC} $MODIFIED"
-	       
-      fi
-#    fi
+    fi
   fi
 
 
-  # Can be slow
   P_HOST=${COLOR2}$HOSTNAME${NC}
-  # if (echo "$CFG_SPECIAL_HOSTS"  | fgrep -q "$(hostname)"); then
-  #   P_HOST=${GREEN}${P_HOST}${NC}
-  # fi
+  if (echo "$CFG_SPECIAL_HOSTS"  | fgrep -q "$(hostname)"); then
+    P_HOST=${GREEN}${P_HOST}${NC}
+  fi
 
   # Communicate the username/hostname to the remote tmux session
   #  set_tmux_pane_title $(whoami)"@"$(hostname)":"$(pwd)
@@ -219,8 +339,6 @@ set_bash_prompt() {
   LINE1_RIGHT=""
   __DATE="$(date '+%H:%M:%S %Y-%m-%d')"
 
-
-
   # Combine the Top-left and Top-Right parts into one line spanning the entire terminal..
   # This justifies the "right" part of the prompt to the right side by first writing it,
   # and then doing carriage return and writing the left part..
@@ -231,7 +349,7 @@ set_bash_prompt() {
 
   # Draw a horizontal line separating previous command from current one
   # TODO determine the max right offset dynamically (to accomodate low-width terminals)
-  if [[ $EXIT_CODE == "0" ]]; then
+  if [[ $EXIT_CODE == "0" || $EXIT_CODE == "130" ]]; then  #"130" is likely ctrl+c
 #    LINE0="${DARK}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
     LINE0="${DARK}┌─$(printf %"66"s |tr " " "-")>  ${__DATE}, ${timer_show}${NC}"
   else
@@ -252,15 +370,14 @@ ${LINE2}"
   
 }
 
-
-
-
 PROMPT_COMMAND=set_bash_prompt
-
 unset color_prompt force_color_prompt
 
 
-# enable color support of ls and also add handy aliases
+# colored GCC warnings and errors
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+# Enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
   test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
   alias ls='ls --color=auto' 
@@ -269,14 +386,10 @@ if [ -x /usr/bin/dircolors ]; then
   alias egrep='egrep --color=auto'
 fi
 
-# colored GCC warnings and errors
-export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-
-#------------------------------------------------------------------------------
+###############################################################################
 # Colored man pages - makes them easier to read.
 # Source: https://stackoverflow.com/questions/4929839/colored-manpages-with-tcsh
-#------------------------------------------------------------------------------
+
 export LESS_TERMCAP_mb=$'\E[01;31m'
 export LESS_TERMCAP_md=$'\E[01;31m'
 export LESS_TERMCAP_me=$'\E[0m'
@@ -286,7 +399,7 @@ export LESS_TERMCAP_ue=$'\E[0m'
 export LESS_TERMCAP_us=$'\E[01;32m'
 
 
-#------------------------------------------------------------------------------
+###############################################################################
 # Set the title of the "pane" in the enclosing tmux sessions.
 # It uses escape characters to communicate this string to tmux.
 # This obviously works across ssh connections:
@@ -294,7 +407,7 @@ export LESS_TERMCAP_us=$'\E[01;32m'
 #    Where:
 #      hostA - is running tmux
 #      hostC - is running this code
-#------------------------------------------------------------------------------
+
 set_tmux_pane_title() {
   printf "\033]2;$1\033\\"
 
@@ -303,32 +416,9 @@ set_tmux_pane_title() {
   # printf "\033k$1\033\\"
 }
 
-#------------------------------------------------------------------------------
-# Other function
-#------------------------------------------------------------------------------
-
-
-# Shorthand for awk
-function col {
-  awk -v col=$1 '{print $col}'
-}
-
-
-# Pushover notifications
-# This can be used like from the shell:   rsync some_src some_dst; pingme "rsync is done"
-#pingme() {
-#    APP_TOKEN='<YOUR_PUSHOVER_APP_TOKEN>'
-#    USER_TOKEN='<YOUR_PUSHOVER_USER_TOKEN>'
-#    TITLE="$1"
-#    MESSAGE="$2"
-#    curl 'https://api.pushover.net/1/messages.json' -X POST -d "token=$APP_TOKEN&user=$USER_TOKEN&title=\"$TITLE\"" --data-urlencode "message=\"$MESSAGE\""
-#}
-
-#------------------------------------------------------------------------------
-# Functions related to measuring 
-# execution time of the last command
+###############################################################################
+# Functions related to measuring the execution time of the last command
 # Source: https://stackoverflow.com/questions/1862510/how-can-the-last-commands-wall-time-be-put-in-the-bash-prompt/1862762
-#------------------------------------------------------------------------------
 
 timer_start=""
 
@@ -361,6 +451,6 @@ function timer_stop {
 
 trap 'timer_start' DEBUG
 
-#------------------------------------------------------------------------------
+###############################################################################
 # End of the file.
-#------------------------------------------------------------------------------
+###############################################################################
