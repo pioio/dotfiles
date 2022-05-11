@@ -75,7 +75,6 @@ alias ll="ls -lha ${LS_TIME_FORMAT} --group-directories-first"
 alias lsl="ls -lhFA --color --group-directories-first | less -r"
 alias lsd='ls -l --group-directories-first | grep ^d'
 
-alias gca="git commit -a -m"
 
 alias speedtest="wget -O /dev/null http://speedtest.ams01.softlayer.com/downloads/test500.zip"
 
@@ -83,8 +82,15 @@ alias speedtest="wget -O /dev/null http://speedtest.ams01.softlayer.com/download
 #alias cdd='cd "$@" && ls --group-directories-first'
 #alias cdd="cd "$@" && ls "
 
+# extra git aliases
+alias gca="git commit -a -m"
 alias s="git s"
-alias sss="git ss"
+alias gss="git ss"
+alias d="git diff"
+alias gds="git diff --staged"
+
+alias j="just" # Justfile automation
+alias t="task" # Taskfile automation
 
 #alias ls='ls -aF --color=always --group-directories-first'
 #------------------------------------------------------------------------------
@@ -203,12 +209,17 @@ set_bash_prompt() {
   #  set_tmux_pane_title $(whoami)"@"$(hostname)":"$(pwd)
 
   # Top-left part of the bash prompt
-#  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}\w${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
-  LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}$(pwd)${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+  # LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}\w${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+  # LINE1_LEFT="${COLOR}┌─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}$(pwd)${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
+  LINE1_LEFT="${COLOR}├─> ${WHOAMI}${COLOR}@${P_HOST}${COLOR}:${WHITE}$(pwd)${COLOR} ${EXIT_CODE_TEXT}${GIT_BRANCH}${PYTHON_VIRT_ENV}${COLOR}"
 
   # Top-right part of the bash prompt
-   LINE1_RIGHT="${timer_show} $(date '+(%Y-%m-%d) %H:%M:%S')"
+  # LINE1_RIGHT="${timer_show} $(date '+(%Y-%m-%d) %H:%M:%S')"
   #LINE1_RIGHT="Top right ${timer_show}"
+  LINE1_RIGHT=""
+  __DATE="$(date '+%H:%M:%S %Y-%m-%d')"
+
+
 
   # Combine the Top-left and Top-Right parts into one line spanning the entire terminal..
   # This justifies the "right" part of the prompt to the right side by first writing it,
@@ -219,12 +230,16 @@ set_bash_prompt() {
   # (source: https://superuser.com/questions/187455/right-align-part-of-prompt)
 
   # Draw a horizontal line separating previous command from current one
+  # TODO determine the max right offset dynamically (to accomodate low-width terminals)
   if [[ $EXIT_CODE == "0" ]]; then
-    LINE0="${DARK}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+#    LINE0="${DARK}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+    LINE0="${DARK}┌─$(printf %"66"s |tr " " "─")  ${__DATE}, ${timer_show}${NC}"
   else
-    LINE0="${RED}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+#    LINE0="${RED}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
+    LINE0="${RED}┌─$(printf %"66"s |tr " " "─")  ${__DATE}, ${timer_show}${NC}"
   fi
 
+  #LINE1=$(printf "${COLOR}%*s\r%s"  $COLUMNS "${LINE1_RIGHT}" "${LINE1_LEFT}")
   LINE1=$(printf "${COLOR}%*s\r%s"  $COLUMNS "${LINE1_RIGHT}" "${LINE1_LEFT}")
   #LINE1=$(printf "${COLOR}%*s\r%s" "$(tput cols)" "${LINE1_RIGHT}" "${LINE1_LEFT}")
 
