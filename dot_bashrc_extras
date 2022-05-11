@@ -136,7 +136,7 @@ set_bash_prompt() {
   if ((${EXIT_CODE} == 0)) || [ -z "$CFG_PRINT_EXIT_CODE" ]; then
       EXIT_CODE_TEXT=""
   else
-      EXIT_CODE_TEXT="${RED}${EXIT_CODE}${COLOR} "
+      EXIT_CODE_TEXT="${RED}${EXIT_CODE}${NC} "
   fi
 
 
@@ -192,7 +192,7 @@ set_bash_prompt() {
 		MODIFIED="${DARK}(clean)${NC}"
         fi
 
-        GIT_BRANCH="${GREEN}[${GIT_BRANCH}]${NC} $MODIFIED"
+        GIT_BRANCH="${NC}${__normal}${GREEN}[${GIT_BRANCH}]${NC} $MODIFIED"
 	       
       fi
 #    fi
@@ -233,10 +233,10 @@ set_bash_prompt() {
   # TODO determine the max right offset dynamically (to accomodate low-width terminals)
   if [[ $EXIT_CODE == "0" ]]; then
 #    LINE0="${DARK}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
-    LINE0="${DARK}┌─$(printf %"66"s |tr " " "─")  ${__DATE}, ${timer_show}${NC}"
+    LINE0="${DARK}┌─$(printf %"66"s |tr " " "-")>  ${__DATE}, ${timer_show}${NC}"
   else
 #    LINE0="${RED}$(printf %"$COLUMNS"s |tr " " ".")${NC}"
-    LINE0="${RED}┌─$(printf %"66"s |tr " " "─")  ${__DATE}, ${timer_show}${NC}"
+    LINE0="${RED}┌─$(printf %"66"s |tr " " "-")>  ${__DATE}, ${timer_show}${NC}"
   fi
 
   #LINE1=$(printf "${COLOR}%*s\r%s"  $COLUMNS "${LINE1_RIGHT}" "${LINE1_LEFT}")
